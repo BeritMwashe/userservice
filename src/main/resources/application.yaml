@@ -1,0 +1,32 @@
+server:
+  port: 8181
+#  servlet:
+#    context-path: /Thrifted
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/jwttables
+    username: root
+    password: Clientdb123#@!
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+
+
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            clientId: github-client-id
+            clientSecret: github-client-secret
+          google:
+            client-id: 824378402160-s7bjmium94o3ahd63nm6q69i3kr9bf0l.apps.googleusercontent.com
+            client-secret: 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
+

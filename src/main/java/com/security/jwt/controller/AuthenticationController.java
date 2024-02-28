@@ -4,10 +4,11 @@ import com.security.jwt.dto.AuthenticationResponse;
 import com.security.jwt.model.USer;
 import com.security.jwt.service.AuthenticationService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth/")
@@ -28,5 +29,8 @@ public class AuthenticationController {
     public ResponseEntity<AuthenticationResponse> login(@RequestBody USer loginDTO){
         return ResponseEntity.ok(authenticationService.authenticate(loginDTO));
     }
+
+
+
 
 }

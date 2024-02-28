@@ -18,11 +18,15 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -45,28 +49,45 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
-        return http.csrf(AbstractHttpConfigurer::disable)
+        Set<String> googleScopes = new HashSet<>();
+        googleScopes.add("https://www.googleapis.com/auth/userinfo.email");
+        googleScopes.add("https://www.googleapis.com/auth/userinfo.profile");
+
+        OidcUserService googleUserService = new OidcUserService();
+        googleUserService.setAccessibleScopes(googleScopes);
+        return http
+
+                .csrf(AbstractHttpConfigurer::disable)
+
                 .authorizeHttpRequests(
                         req->
-                                req.requestMatchers("/auth/login/**","/auth/register/**","/lists/home/**").permitAll()
+                                req.requestMatchers("/auth/login/**","/auth/register/**","/lists/home/**","/").permitAll()
                                 .requestMatchers("/lists/premium_books/**").hasAnyAuthority("ADMIN")
+//                                        .requestMatchers("/").hasAnyAuthority("ADMIN","USER")
                                         .requestMatchers("/add_clothes/**").hasAnyAuthority("ADMIN","SUPERVISOR")
                                 .anyRequest()
                         .authenticated()
                         )
 
+
                 .userDetailsService(userDetailsService)
                 .exceptionHandling(e->
                         e.accessDeniedHandler(accessDeniedHandler)
                                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-//                .oauth2Login(Customizer.withDefaults())
+                .oauth2Login(Customizer.withDefaults())
+//                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
                 .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .oauth2Login((oauth2Login) -> oauth2Login
-                .userInfoEndpoint((userInfo) -> userInfo
-                        .userAuthoritiesMapper(grantedAuthoritiesMapper())
+                        .userInfoEndpoint((userInfo) -> userInfo
+                                .userAuthoritiesMapper(grantedAuthoritiesMapper())
+                                .oidcUserService(googleUserService) )
+                       )
+                .logout(l -> l
+                        .logoutSuccessUrl("/").permitAll()
                 )
-        )
+
                 .build();
 
     }
@@ -103,5 +124,9 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
+    }
+    @Bean
+    public JwtDecoder jwtDecoder(){
+        return JwtDecoders.fromIssuerLocation("https://accounts.google.com");
     }
 }

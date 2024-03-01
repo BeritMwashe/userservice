@@ -21,36 +21,39 @@ spring:
 
   security:
     oauth2:
-      authorizationserver:
-        client:
-          oidc-client:
-            registration:
-              client-id: 824378402160-s7bjmium94o3ahd63nm6q69i3kr9bf0l.apps.googleusercontent.com
-              client-secret: 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
-              client-authentication-methods:
-                - "client_secret_basic"
-              authorization-grant-types:
-                - "authorization_code"
-                - "refresh_token"
-              redirect-uris:
-                - "http://127.0.0.1:8081/login/oauth2/code/oidc-client"
-              post-logout-redirect-uris:
-                - "http://127.0.0.1:8081/"
-              scopes:
-                - "openid"
-                - "profile"
-            require-authorization-consent: true
+      client:
+        registration:
+          google:
+            client-id: 824378402160-s7bjmium94o3ahd63nm6q69i3kr9bf0l.apps.googleusercontent.com
+            client-secret: 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
+
+        #            new
+        resourceserver:
+          jwt:
+
+            issuer-uri: https://accounts.google.com
+            jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+#      logging:
+#      authorizationserver:
+#        client:
+#          oidc-client:
+#            registration:
+#              client-id: 824378402160-s7bjmium94o3ahd63nm6q69i3kr9bf0l.apps.googleusercontent.com
+#              client-secret: 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
+#              client-authentication-methods:
+#                - "client_secret_basic"
+#              authorization-grant-types:
+#                - "authorization_code"
+#                - "refresh_token"
+#              redirect-uris:
+#                - "http://127.0.0.1:8181/login/oauth2/code/oidc-client"
+#              post-logout-redirect-uris:
+#                - "http://127.0.0.1:8181/"
+#              scopes:
+#                - "openid"
+#                - "profile"
+#            require-authorization-consent: true
 #    oauth2:
-#      client:
-#        registration:
-#          google:
-#            client-id: 824378402160-s7bjmium94o3ahd63nm6q69i3kr9bf0l.apps.googleusercontent.com
-#            client-secret: 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
-#            new
-#      resourceserver:
-#        jwt:
-#          issuer-uri: https://accounts.google.com
-#          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
-logging:
+
   level:
     org.springframework.web.client.RestTemplate: DEBUG

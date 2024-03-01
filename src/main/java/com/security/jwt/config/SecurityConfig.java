@@ -3,9 +3,11 @@ package com.security.jwt.config;
 
 import com.security.jwt.exceptions.CustomAccessDeniedHandler;
 import com.security.jwt.filter.JwtAuthenticationFilter;
+import com.security.jwt.repository.UserRepository;
 import com.security.jwt.service.UserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
@@ -16,6 +18,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -41,20 +44,20 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(UserDetailsService userDetailsService, CustomAccessDeniedHandler accessDeniedHandler, JwtAuthenticationFilter jwtAuthenticationFilter) {
+    private final UserRepository userRepository;
+
+    public SecurityConfig(UserDetailsService userDetailsService, CustomAccessDeniedHandler accessDeniedHandler, JwtAuthenticationFilter jwtAuthenticationFilter, UserRepository userRepository) {
         this.userDetailsService = userDetailsService;
         this.accessDeniedHandler = accessDeniedHandler;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.userRepository = userRepository;
     }
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
-        Set<String> googleScopes = new HashSet<>();
-        googleScopes.add("https://www.googleapis.com/auth/userinfo.email");
-        googleScopes.add("https://www.googleapis.com/auth/userinfo.profile");
 
-        OidcUserService googleUserService = new OidcUserService();
-        googleUserService.setAccessibleScopes(googleScopes);
+
         return http
 
                 .csrf(AbstractHttpConfigurer::disable)
@@ -74,16 +77,15 @@ public class SecurityConfig {
                 .exceptionHandling(e->
                         e.accessDeniedHandler(accessDeniedHandler)
                                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .oauth2Login(Customizer.withDefaults())
+//                .oauth2Login(Customizer.withDefaults())
 //                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
-                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-
-                .oauth2Login((oauth2Login) -> oauth2Login
-                        .userInfoEndpoint((userInfo) -> userInfo
-                                .userAuthoritiesMapper(grantedAuthoritiesMapper())
-                                .oidcUserService(googleUserService) )
-                       )
+//                .oauth2Login((oauth2Login) -> oauth2Login
+//                        .userInfoEndpoint((userInfo) -> userInfo
+//                                .userAuthoritiesMapper(grantedAuthoritiesMapper())
+//                                .oidcUserService(googleUserService) )
+//                       )
                 .logout(l -> l
                         .logoutSuccessUrl("/").permitAll()
                 )
@@ -91,6 +93,33 @@ public class SecurityConfig {
                 .build();
 
     }
+
+    @Bean
+    @Order(1)
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
+            throws Exception {
+        Set<String> googleScopes = new HashSet<>();
+        googleScopes.add("https://www.googleapis.com/auth/userinfo.email");
+        googleScopes.add("https://www.googleapis.com/auth/userinfo.profile");
+        googleScopes.add("https://www.googleapis.com/auth/user.phonenumbers.read");
+
+        OidcUserService googleUserService = new OidcUserService();
+        googleUserService.setAccessibleScopes(googleScopes);
+
+        http.authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest().authenticated())
+                .oauth2Login(oauthLogin -> oauthLogin.userInfoEndpoint(userInfoEndpointConfig ->
+                        userInfoEndpointConfig.oidcUserService(googleUserService)));
+        return http.build();
+    }
+//        http
+//                .authorizeHttpRequests((authorize) -> authorize
+//                        .anyRequest().authenticated()
+//                )
+////                .oauth2Login(Customizer.withDefaults());
+//         .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()));
+
+
+
     private GrantedAuthoritiesMapper grantedAuthoritiesMapper() {
         return (authorities) -> {
             Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
@@ -116,6 +145,9 @@ public class SecurityConfig {
             return mappedAuthorities;
         };
     }
+
+
+
     @Bean
     public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
@@ -125,8 +157,5 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
-    @Bean
-    public JwtDecoder jwtDecoder(){
-        return JwtDecoders.fromIssuerLocation("https://accounts.google.com");
-    }
+
 }
